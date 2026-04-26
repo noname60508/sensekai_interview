@@ -3,9 +3,9 @@ info:
   title: Sensekai Interview 書籍管理 API
   description: |
     書籍管理 RESTful API v2
-  version: 2.0.0
+  version: 1.0.0
 servers:
-  - url: 'http://127.0.0.1/api/v1'
+  - url: 'http://127.0.0.1:8000/api/v1'
     description: ローカル開発環境 / 本地開發環境
 tags:
   - name: 書籍
@@ -136,6 +136,16 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/書籍作成'
+            examples:
+              example1:
+                summary: 新規書籍の作成 / 新建書籍
+                value:
+                  title: 'Laravelの教科書 バージョン12対応'
+                  author: '加藤 じゅんこ'
+                  isbn10: '4802615116'
+                  isbn13: '9784802615112'
+                  publisher: 'ソシム'
+                  publicationDate: '2025-07-18'
       responses:
         '201':
           description: 書籍作成成功 / 書籍成功建立

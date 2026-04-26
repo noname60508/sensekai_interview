@@ -34,9 +34,26 @@
    DB_PASSWORD=password
    ```
 
-5. **マイグレーション実行**
+5. **Application Key を生成**
+   ```bash
+   php artisan key:generate
+   ```
+
+6. **マイグレーション実行**
    ```bash
    php artisan migrate
+   ```
+
+7. **開発サーバーを起動**
+   ```bash
+   php artisan serve
+   ```
+   - サーバーは `http://127.0.0.1:8000` で起動します
+   - API エンドポイントは `http://127.0.0.1:8000/api/v1` でアクセス可能です
+
+8. **テスト実行（オプション）**
+   ```bash
+   php artisan test
    ```
 
 完了です！
