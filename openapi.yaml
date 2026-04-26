@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: Sensekai Interview 書籍管理 API
+  description: |
+    書籍管理 RESTful API v2
+  version: 2.0.0
+servers:
+  - url: 'http://127.0.0.1/api/v1'
+    description: ローカル開発環境 / 本地開發環境
+tags:
+  - name: 書籍
+paths:
+  /books:
+    get:
+      tags:
+        - 書籍
+      summary: 書籍一覧を取得
+      operationId: getBooks
+      parameters:
+        - name: page
+          in: query
+          description: ページ番号（1から始まる）/ 頁碼（從1開始）
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+        - name: pageSize
+          in: query
+          description: 1ページあたりの件数 / 每頁筆數
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+        - name: title
+          in: query
+          description: 書籍名（曖昧検索）/ 書籍標題（模糊搜尋）
+          required: false
+          schema:
+            type: string
+            maxLength: 50
+            example: Laravel
+        - name: author
+          in: query
+          description: 著者名（曖昧検索）/ 著者名稱（模糊搜尋）
+          required: false
+          schema:
+            type: string
+            example: Taylor Otwell
+        - name: isbn10
+          in: query
+          description: ISBN10（曖昧検索）/ ISBN10（模糊搜尋）
+          required: false
+          schema:
+            type: string
+            example: '4802615116'
+        - name: isbn13
+          in: query
+          description: ISBN13（曖昧検索）/ ISBN13（模糊搜尋）
+          required: false
+          schema:
+            type: string
+            example: '9784802615112'
+        - name: publisher
+          in: query
+          description: 出版社（曖昧検索）/ 出版社（模糊搜尋）
+          required: false
+          schema:
+            type: string
+            example: O'Reilly Media
+        - name: publicationDate
+          in: query
+          description: 出版日（形式：YYYY-MM-DD）/ 出版日期（格式：YYYY-MM-DD）
+          required: false
+          schema:
+            type: string
+            format: date
+            example: '2024-01-15'
+      responses:
+        '200':
+          description: 書籍一覧取得成功 / 成功取得書籍列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                      - error
+                    example: success
+                  message:
+                    type: string
+                    example: null
+                    nullable: true
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/書籍'
+                      meta:
+                        type: object
+                        properties:
+                          currentPage:
+                            type: integer
+                            description: 現在のページ番号 / 目前頁碼
+                            example: 1
+                          lastPage:
+                            type: integer
+                            description: 最後のページ番号 / 最後一頁
+                            example: 5
+                          perPage:
+                            type: integer
+                            description: 1ページあたりの件数 / 每頁筆數
+                            example: 10
+                          total:
+                            type: integer
+                            description: 全体の件数 / 總筆數
+                            example: 47
+        '400':
+          $ref: '#/components/responses/不正なリクエスト'
+        '500':
+          $ref: '#/components/responses/サーバーエラー'
+    post:
+      tags:
+        - 書籍
+      summary: 新規書籍を作成
+      operationId: createBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/書籍作成'
+      responses:
+        '201':
+          description: 書籍作成成功 / 書籍成功建立
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                      - error
+                    example: success
+                  message:
+                    type: string
+                    nullable: true
+                    example: null
+                  data:
+                    $ref: '#/components/schemas/書籍'
+        '400':
+          $ref: '#/components/responses/不正なリクエスト'
+        '500':
+          $ref: '#/components/responses/サーバーエラー'
+  '/books/{id}':
+    patch:
+      tags:
+        - 書籍
+      summary: 書籍を更新
+      operationId: updateBook
+      parameters:
+        - name: id
+          in: path
+          description: 書籍ID / 書籍 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/書籍更新'
+            examples:
+              example1:
+                summary: 全部アップデート / 全部更新
+                value:
+                  title: Updated Title
+                  author: Updated Author
+                  isbn10: '4798075272'
+                  isbn13: '978-4798075273'
+                  publisher: Updated Publisher
+                  publicationDate: '2025-05-05'
+              example2:
+                summary: 一部フィールドのみアップデート / 只更新部分欄位
+                value:
+                  title: Updated Title
+                  isbn10: '4802615116'
+                  isbn13: '9784802615112'
+      responses:
+        '204':
+          description: 書籍更新成功 / 書籍成功更新
+        '400':
+          $ref: '#/components/responses/不正なリクエスト'
+        '404':
+          description: 書籍が見つかりません / 書籍不存在
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Not Found
+                  data:
+                    type: object
+                    nullable: true
+        '500':
+          $ref: '#/components/responses/サーバーエラー'
+    delete:
+      tags:
+        - 書籍
+      summary: 書籍を削除
+      operationId: deleteBook
+      parameters:
+        - name: id
+          in: path
+          description: 書籍ID / 書籍 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '204':
+          description: 書籍削除成功 / 書籍成功刪除
+        '404':
+          description: 書籍が見つかりません / 書籍不存在
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Not Found
+                  data:
+                    type: object
+                    nullable: true
+        '500':
+          $ref: '#/components/responses/サーバーエラー'
+
+components:
+  schemas:
+    書籍:
+      type: object
+      description: 書籍情報 / 書籍資訊
+      required:
+        - id
+        - title
+        - author
+        - isbn10
+        - isbn13
+        - publisher
+        - publicationDate
+      properties:
+        id:
+          type: integer
+          description: 書籍ID / 書籍 ID
+          example: 1
+        title:
+          type: string
+          description: 書籍名 / 書籍標題
+          maxLength: 50
+          example: 'Laravelの教科書 バージョン12対応'
+        author:
+          type: string
+          description: 著者名 / 著者名稱
+          example: '加藤 じゅんこ'
+        isbn10:
+          type: string
+          description: ISBN-10 (10桁) / ISBN-10（10位）
+          example: '4802615116'
+        isbn13:
+          type: string
+          description: ISBN-13 (13桁) / ISBN-13（13位）
+          example: '9784802615112'
+        publisher:
+          type: string
+          description: 出版社 / 出版社
+          example: ソシム
+        publicationDate:
+          type: string
+          format: date
+          description: 出版日 / 出版日期
+          example: '2025-07-18'
+    書籍作成:
+      type: object
+      description: 書籍作成リクエスト / 建立書籍請求
+      required:
+        - title
+        - author
+        - isbn10
+        - isbn13
+        - publisher
+        - publicationDate
+      properties:
+        title:
+          type: string
+          description: 書籍名（必須）/ 書籍標題（必須）
+          maxLength: 50
+          example: 'Laravelの教科書 バージョン12対応'
+        author:
+          type: string
+          description: 著者名（必須）/ 著者名稱（必須）
+          example: '加藤 じゅんこ'
+        isbn10:
+          type: string
+          description: ISBN-10 (10桁、必須) / ISBN-10（10位、必須）
+          example: '4802615116'
+        isbn13:
+          type: string
+          description: ISBN-13 (13桁、必須) / ISBN-13（13位、必須）
+          example: '9784802615112'
+        publisher:
+          type: string
+          description: 出版社（必須）/ 出版社（必須）
+          example: 'ソシム'
+        publicationDate:
+          type: string
+          format: date
+          description: 出版日（必須、形式 YYYY-MM-DD）/ 出版日期（必須、格式 YYYY-MM-DD）
+          example: '2025-07-18'
+    書籍更新:
+      type: object
+      description: 書籍更新リクエスト（すべてのフィールドはオプション）/ 更新書籍請求（所有欄位可選）
+      properties:
+        title:
+          type: string
+          description: 書籍名 / 書籍標題
+          maxLength: 50
+          example: Updated Title
+        author:
+          type: string
+          description: 著者名 / 著者名稱
+          example: New Author
+        isbn10:
+          type: string
+          description: ISBN-10 (10桁) / ISBN-10（10位）
+          pattern: '^\d{10}$'
+          example: '4802615116'
+        isbn13:
+          type: string
+          description: ISBN-13 (13桁) / ISBN-13（13位）
+          pattern: '^\d{13}$'
+          example: '9784802615112'
+        publisher:
+          type: string
+          description: 出版社 / 出版社
+          example: New Publisher
+        publicationDate:
+          type: string
+          format: date
+          description: 出版日（形式 YYYY-MM-DD）/ 出版日期（格式 YYYY-MM-DD）
+          example: '2024-06-15'
+  responses:
+    不正なリクエスト:
+      description: リクエストパラメータの検証に失敗しました / 請求參數驗證失敗
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                  - success
+                  - error
+                example: error
+              message:
+                type: string
+                example: Validation Error
+              data:
+                type: object
+                description: 詳細なエラー情報 / 詳細錯誤信息
+          examples:
+            validationError:
+              summary: バリデーションエラー / 驗證錯誤
+              value:
+                status: error
+                message: Validation Error
+                data:
+                  title:
+                    - The title field is required.
+                  author:
+                    - The author field is required.
+                  isbn10:
+                    - The isbn10 format is invalid.
+                  isbn13:
+                    - The isbn13 format is invalid.
+    サーバーエラー:
+      description: サーバー内部エラー / 伺服器內部錯誤
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                  - success
+                  - error
+                example: error
+              message:
+                type: string
+                example: Internal Server Error
+              data:
+                type: object
+                nullable: true
+          examples:
+            serverError:
+              summary: サーバーエラーレスポンス / 伺服器錯誤響應
+              value:
+                status: error
+                message: Internal Server Error
+                data: null

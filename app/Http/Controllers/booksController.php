@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Services\booksService;
+use App\Http\Resources\BookResource;
 
 class booksController extends Controller
 {
@@ -23,7 +26,8 @@ class booksController extends Controller
         $validator = Validator::make($request->all(), [
             'title'           => ['nullable', 'string', 'max:50'],
             'author'          => ['nullable', 'string'],
-            'isbn'            => ['nullable', 'string'],
+            'isbn10'          => ['nullable', 'string'],
+            'isbn13'          => ['nullable', 'string'],
             'publisher'       => ['nullable', 'string'],
             'publicationDate' => ['nullable', 'date'],
             'page'            => ['required', 'integer', 'min:1'],
@@ -31,7 +35,8 @@ class booksController extends Controller
         ], [
             'title'           => '【title:書籍名】は文字列で最大50文字までです',
             'author'          => '【author:著者名】は文字列です',
-            'isbn'            => '【isbn:ISBN】は文字列です',
+            'isbn10'          => '【isbn10:ISBN10】は文字列です',
+            'isbn13'          => '【isbn13:ISBN13】は文字列です',
             'publisher'       => '【publisher:出版社】は文字列です',
             'publicationDate' => '【publicationDate:出版日】は日付形式です',
             'page'            => '【page:頁碼】は必須で、整数で、最小値は1です',
@@ -39,16 +44,25 @@ class booksController extends Controller
         ]);
         // エラー回傳
         if ($validator->fails()) {
-            return response($validator->errors(), 400);
+            return response()->validationError($validator);
         }
 
         try {
             $pageSize = $request->input('pageSize', $this->defaultPageSize);
             $booksList = $this->booksService->getBooksList($request, $pageSize);
+            $output = [
+                'data' => BookResource::collection($booksList),
+                'meta' => [
+                    'currentPage' => $booksList->currentPage(),
+                    'lastPage' => $booksList->lastPage(),
+                    'perPage' => $booksList->perPage(),
+                    'total' => $booksList->total(),
+                ],
+            ];
 
-            return response($booksList, 200);
+            return response()->apiResponse($output, 200);
         } catch (\Throwable $e) {
-            return response(env('APP_DEBUG') ? $e->getMessage() : null, 500);
+            return response()->apiFail($e);
         }
     }
 
@@ -60,27 +74,35 @@ class booksController extends Controller
         $validator = Validator::make($request->all(), [
             'title'           => ['required', 'string', 'max:50'],
             'author'          => ['required', 'string'],
-            'isbn'            => ['required', 'string'],
+            'isbn10'          => ['required', 'string'],
+            'isbn13'          => ['required', 'string'],
             'publisher'       => ['nullable', 'string'],
             'publicationDate' => ['nullable', 'date'],
         ], [
             'title'           => '【title:書籍名】は必須で、文字列で最大50文字までです',
             'author'          => '【author:著者名】は必須で、文字列です',
-            'isbn'            => '【isbn:ISBN】は必須で、文字列です',
+            'isbn10'          => '【isbn10:ISBN10】は必須で、文字列です',
+            'isbn13'          => '【isbn13:ISBN13】は必須で、文字列です',
             'publisher'       => '【publisher:出版社】は文字列です',
             'publicationDate' => '【publicationDate:出版日】は日付形式です',
         ]);
         // エラー回傳
         if ($validator->fails()) {
-            return response($validator->errors(), 400);
+            return response()->validationError($validator);
         }
 
         try {
-            $this->booksService->createBook($request->all());
+            if ($request->has('isbn10') && !$this->ISBN10Check($request->isbn10)) {
+                return response()->apiResponse(['title' => ['【isbn10:ISBN10】は有効なISBN形式ではありません']], 400, 'Validation Error');
+            }
+            if ($request->has('isbn13') && !$this->ISBN13Check($request->isbn13)) {
+                return response()->apiResponse(['title' => ['【isbn13:ISBN13】は有効なISBN形式ではありません']], 400, 'Validation Error');
+            }
+            $data = $this->booksService->createBook($request->all());
 
-            return response('Created', 201);
+            return response()->apiResponse(new BookResource($data), 201);
         } catch (\Throwable $e) {
-            return response(env('APP_DEBUG') ? $e->getMessage() : null, 500);
+            return response()->apiFail($e);
         }
     }
 
@@ -90,10 +112,12 @@ class booksController extends Controller
     public function show(string $id)
     {
         try {
-            $book = $this->booksService->getBookById($id);
-            return response($book, 200);
+            $data = $this->booksService->getBookById($id);
+            return response()->apiResponse(new BookResource($data), 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->apiFail($e, 404);
         } catch (\Throwable $e) {
-            return response(env('APP_DEBUG') ? $e->getMessage() : null, 500);
+            return response()->apiFail($e);
         }
     }
 
@@ -105,27 +129,37 @@ class booksController extends Controller
         $validator = Validator::make($request->all(), [
             'title'           => ['nullable', 'string', 'max:50'],
             'author'          => ['nullable', 'string'],
-            'isbn'            => ['nullable', 'string'],
+            'isbn10'          => ['nullable', 'string'],
+            'isbn13'          => ['nullable', 'string'],
             'publisher'       => ['nullable', 'string'],
             'publicationDate' => ['nullable', 'date'],
         ], [
             'title'           => '【title:書籍名】は文字列で最大50文字までです',
             'author'          => '【author:著者名】は文字列です',
-            'isbn'            => '【isbn:ISBN】は文字列です',
+            'isbn10'          => '【isbn10:ISBN10】は文字列です',
+            'isbn13'          => '【isbn13:ISBN13】は文字列です',
             'publisher'       => '【publisher:出版社】は文字列です',
             'publicationDate' => '【publicationDate:出版日】は日付形式です',
         ]);
         // エラー回傳
         if ($validator->fails()) {
-            return response($validator->errors(), 400);
+            return response()->validationError($validator);
         }
 
         try {
+            if ($request->has('isbn10') && !$this->ISBN10Check($request->isbn10)) {
+                return response()->apiResponse(['title' => ['【isbn10:ISBN10】は有効なISBN形式ではありません']], 400, 'Validation Error');
+            }
+            if ($request->has('isbn13') && !$this->ISBN13Check($request->isbn13)) {
+                return response()->apiResponse(['title' => ['【isbn13:ISBN13】は有効なISBN形式ではありません']], 400, 'Validation Error');
+            }
             $this->booksService->updateBook($id, $request);
 
-            return response('Updated', 204);
+            return response()->apiResponse([], 204, 'Updated');
+        } catch (ModelNotFoundException $e) {
+            return response()->apiFail($e, 404);
         } catch (\Throwable $e) {
-            return response(env('APP_DEBUG') ? $e->getMessage() : null, 500);
+            return response()->apiFail($e);
         }
     }
 
@@ -137,9 +171,11 @@ class booksController extends Controller
         try {
             $this->booksService->deleteBook($id);
 
-            return response('Deleted', 204);
+            return response()->apiResponse([], 204, 'Deleted');
+        } catch (ModelNotFoundException $e) {
+            return response()->apiFail($e, 404);
         } catch (\Throwable $e) {
-            return response(env('APP_DEBUG') ? $e->getMessage() : null, 500);
+            return response()->apiFail($e);
         }
     }
 }
